@@ -10,7 +10,7 @@ python main.py --data_dir '../data' \
 	--teacher 'vgg11_1' \
 	--wstudSim 10.0 \
 	--wstudDeriv 1.0 \
-	--softWeight 5 \
+	--softWeight 9 \
 	--hardWeight 1 \
 	--learningratescheduler='cifarschedular' \
 	--decayinterval=15 \

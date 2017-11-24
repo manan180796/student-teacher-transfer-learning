@@ -58,11 +58,11 @@ def teacherStudent(train_loader, test_loader, teachers, student, opt):
 
     temp = 0
     for index, weight in enumerate(opt.wstudSim):
-        temp = temp+weight
+        temp = temp + weight
     for index, weight in enumerate(opt.wstudSim):
         opt.wstudSim[index] = opt.wstudSim[index] / temp
 
-    temp = opt.softWeight+opt.hardWeight
+    temp = opt.softWeight + opt.hardWeight
     opt.softWeight, opt.hardWeight = opt.softWeight / temp, opt.hardWeight / temp
 
     if opt.cuda:
@@ -71,7 +71,7 @@ def teacherStudent(train_loader, test_loader, teachers, student, opt):
         derivativeCriterion = derivativeCriterion.cuda()
 
     for epoch in range(opt.epochs):
-
+        sLoss = 0
         # utils.adjust_learning_rate(opt, optimizer, epoch)
         for step, (x, y) in enumerate(train_loader):
             b_x = Variable(x)
@@ -86,10 +86,6 @@ def teacherStudent(train_loader, test_loader, teachers, student, opt):
             meanStudent, stdStudent = studentOutput.mean(), studentOutput.std()
             studentOutput = (studentOutput - meanStudent) / stdStudent
 
-            # meanSoftStudent, stdSoftStudent = softStudentOutput.mean(), softStudentOutput.std()
-            # softStudentOutput = (softStudentOutput -
-            #                      meanSoftStudent) / stdSoftStudent
-
             softLoss = None
             derivativeLoss = None
             for teacherNo, teacher in enumerate(teachers):
@@ -100,7 +96,8 @@ def teacherStudent(train_loader, test_loader, teachers, student, opt):
                 # teacherOutput = (teacherOutput - meanTeacher) / stdTeacher
 
                 # teachersimLoss = softLossCriterion(teacherOutput, studentOutput.detach())
-                studentsimLoss = softLossCriterion(softStudentOutput, teacherOutput.detach())
+                studentsimLoss = softLossCriterion(
+                    softStudentOutput, teacherOutput.detach())
 
                 # teachergrad_params = torch.autograd.grad(
                 #     teachersimLoss, teacher.parameters(), create_graph=True)
@@ -133,13 +130,16 @@ def teacherStudent(train_loader, test_loader, teachers, student, opt):
 
             hardLoss = hardLossCriterion(
                 studentOutput, b_y)   # cross entropy loss
-            TotalLoss = opt.hardWeight*hardLoss + opt.softWeight*softLoss #+ derivativeLoss
+            TotalLoss = opt.hardWeight * hardLoss + \
+                opt.softWeight * softLoss  # + derivativeLoss
             optimizer.zero_grad()           # clear gradients for this training step
             TotalLoss.backward()                 # backpropagation, compute gradients
             optimizer.step()                # apply gradients
+            sLoss = sLoss + TotalLoss.data[0]
 
         accurate_results, total = runValidation(student, train_loader, opt)
         print "On epoch", epoch, "train Accuracy = ", accurate_results / total
+        print "sLoss = ", sLoss
 
     accurate_results, total = runValidation(student, test_loader, opt)
     print 'validating on test samples of size = ', total
